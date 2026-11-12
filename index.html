@@ -119,6 +119,11 @@ h1{font-size:clamp(30px,4.4vw,46px);line-height:1.12;margin:10px 0 12px;color:va
 .donebox{display:flex;align-items:center;gap:8px;margin-top:16px;font-size:15px;cursor:pointer;width:max-content}
 .donebox input{width:18px;height:18px;accent-color:var(--green)}
 .empty{padding:30px;text-align:center;color:var(--muted);background:#fff;border:1px dashed var(--line);border-radius:var(--r);margin-top:20px}
+/* time lock */
+.lock{margin:28px 0;padding:36px 24px;border:1px dashed var(--line);border-radius:14px;text-align:center;background:#fff}
+.lock svg{width:40px;height:40px;color:var(--blue)}
+.lock h2{margin:10px 0 6px;color:var(--navy)}
+.lock p{margin:0;color:var(--muted);font-size:18px}
 /* files tab */
 .fg{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px;margin:24px 0}
 .fc{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--sh);display:flex;flex-direction:column;gap:6px}
@@ -247,13 +252,18 @@ const store = {
 };
 let done = store.get("autonom-done") || {};
 let tab = "d1";
+// Časová zámka 2. dňa: odomkne sa 18. 11. 2026 o 0:00 (bratislavský čas).
+// Náhľad pre lektora: pridajte na koniec adresy ?nahlad
+const UNLOCK = { d2: new Date("2026-11-18T00:00:00+01:00") };
+const PREVIEW = new URLSearchParams(location.search).has("nahlad");
+const isLocked = id => !PREVIEW && UNLOCK[id] && Date.now() < UNLOCK[id].getTime();
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 const roles = new Set();
 D.days.forEach(d => d.ex.forEach(e => e.roles.forEach(r => r !== "Všetci" && roles.add(r))));
 [...roles].sort((a,b)=>a.localeCompare(b,"sk")).forEach(r => { const o = document.createElement("option"); o.textContent = r; $("#rl").appendChild(o); });
-D.days.forEach(d => { $("#c-"+d.id).textContent = d.ex.filter(e=>e.id!=="N").length + " cvičení"; });
+D.days.forEach(d => { $("#c-"+d.id).textContent = isLocked(d.id) ? "🔒 od 18. 11." : d.ex.filter(e=>e.id!=="N").length + " cvičení"; });
 
 const chev = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>';
 const dl = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>';
@@ -290,6 +300,11 @@ function render(){
   const day = D.days.find(d => d.id === tab);
   if(!day) return;
   $("#daysub").textContent = day.sub;
+  if(isLocked(day.id)){
+    $("#list").innerHTML = '<div class="lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><h2>Cvičenia 2. dňa sa sprístupnia v stredu 18. 11. 2026</h2><p>Dovtedy sa venujte cvičeniam 1. dňa.</p></div>';
+    $("#cnt").textContent = "";
+    return;
+  }
   const q = $("#q").value.trim().toLowerCase(), lv = $("#lv").value, rl = $("#rl").value, ext = $("#ext").checked;
   let shown = 0, html = "";
   day.blocks.forEach(b => {
